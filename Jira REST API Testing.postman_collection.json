@@ -1,0 +1,365 @@
+{
+	"info": {
+		"_postman_id": "ee031eb7-5ab6-4334-972a-fd17941cc34f",
+		"name": "Jira REST API Testing",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "28175123"
+	},
+	"item": [
+		{
+			"name": "Create an issue End-to-End",
+			"item": [
+				{
+					"name": "GetProjectID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const jsonResponse = pm.response.json();\r",
+									"let projects = jsonResponse.values;\r",
+									"console.log(projects);\r",
+									"let projKeys = projects.map((value) => value.key);\r",
+									"let projectId = projects[projKeys.indexOf('AAT')].id;\r",
+									"console.log(projectId);\r",
+									"pm.collectionVariables.set(\"projectId\", projectId);\r",
+									"\r",
+									"postman.setNextRequest(\"GetIssueTypes\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/rest/api/3/project/search/",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"rest",
+								"api",
+								"3",
+								"project",
+								"search",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GetIssueTypes",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const jsonBody = pm.response.json();\r",
+									"let issueNames = jsonBody.map((value) => value.name);\r",
+									"console.log(issueNames);\r",
+									"let issueId = jsonBody[issueNames.indexOf(pm.iterationData.get(\"IssueName\"))].id;\r",
+									"console.log(issueId);\r",
+									"\r",
+									"pm.collectionVariables.set('issueId', issueId);\r",
+									"\r",
+									"postman.setNextRequest(\"CreateIssue\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/rest/api/3/issuetype/project?projectId={{projectId}}",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"rest",
+								"api",
+								"3",
+								"issuetype",
+								"project"
+							],
+							"query": [
+								{
+									"key": "projectId",
+									"value": "{{projectId}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "CreateIssue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"const jsonBody = pm.response.json();\r",
+									"let issueKey = jsonBody.key;\r",
+									"console.log(issueKey);\r",
+									"\r",
+									"pm.collectionVariables.set(\"issueKey\", issueKey);\r",
+									"\r",
+									"pm.test(\"Validate the issue link\", () => {\r",
+									"    const text = pm.response.text();\r",
+									"    let id = jsonBody.id;\r",
+									"    pm.expect(text).to.include(\"https://lonsdalepractice.atlassian.net/rest/api/3/issue/\"+id);\r",
+									"});\r",
+									"\r",
+									"postman.setNextRequest(\"GetIssue\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"fields\": {\r\n    \"description\": {\r\n      \"content\": [\r\n        {\r\n          \"content\": [\r\n            {\r\n              \"text\": \"{{$randomJobDescriptor}}\",\r\n              \"type\": \"text\"\r\n            }\r\n          ],\r\n          \"type\": \"paragraph\"\r\n        }\r\n      ],\r\n      \"type\": \"doc\",\r\n      \"version\": 1\r\n    },\r\n    \"issuetype\": {\r\n      \"id\": \"{{issueId}}\"\r\n    },\r\n    \"labels\": [\r\n      \"Postman_auto-label\"\r\n    ],\r\n\r\n\r\n    \"project\": {\r\n      \"id\": \"{{projectId}}\"\r\n    },\r\n    \"reporter\": {\r\n      \"id\": \"{{leadAccountId}}\"\r\n    },\r\n\r\n    \"summary\": \"{{$randomPhrase}}\"\r\n  },\r\n  \"update\": {}\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/rest/api/3/issue",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"rest",
+								"api",
+								"3",
+								"issue"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "GetIssue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Validate issue key\", () => {\r",
+									"    const jsonBody = pm.response.json();\r",
+									"    pm.expect(jsonBody.key).to.eql(pm.collectionVariables.get(\"issueKey\"));\r",
+									"})\r",
+									"\r",
+									"postman.setNextRequest(\"EditIssue\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "basic",
+							"basic": [
+								{
+									"key": "password",
+									"value": "{{apitoken\n}}",
+									"type": "string"
+								},
+								{
+									"key": "username",
+									"value": "{{username}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{url}}/rest/api/3/issue/{{issueKey}}",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"rest",
+								"api",
+								"3",
+								"issue",
+								"{{issueKey}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "EditIssue",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"postman.setNextRequest(\"DeleteIssue\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"fields\": {\r\n    \"description\": {\r\n      \"content\": [\r\n        {\r\n          \"content\": [\r\n            {\r\n              \"text\": \"{{$randomJobDescriptor}}\",\r\n              \"type\": \"text\"\r\n            }\r\n          ],\r\n          \"type\": \"paragraph\"\r\n        }\r\n      ],\r\n      \"type\": \"doc\",\r\n      \"version\": 1\r\n    },\r\n    \"issuetype\": {\r\n      \"id\": \"{{issueId}}\"\r\n    },\r\n    \"labels\": [\r\n      \"Postman_auto-label\"\r\n    ],\r\n\r\n\r\n    \"project\": {\r\n      \"id\": \"{{projectId}}\"\r\n    },\r\n    \"reporter\": {\r\n      \"id\": \"{{leadAccountId}}\"\r\n    },\r\n\r\n    \"summary\": \"{{$randomPhrase}}\"\r\n  },\r\n  \"update\": {}\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{url}}/rest/api/3/issue/{{issueKey}}",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"rest",
+								"api",
+								"3",
+								"issue",
+								"{{issueKey}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "DeleteIssue",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{url}}/rest/api/3/issue/{{issueKey}}",
+							"host": [
+								"{{url}}"
+							],
+							"path": [
+								"rest",
+								"api",
+								"3",
+								"issue",
+								"{{issueKey}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							"pm.test(\"Successful request\", () => {",
+							"    pm.expect(pm.response.code).to.be.oneOf([200, 201, 202, 203, 204]);",
+							"});"
+						]
+					}
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "basic",
+		"basic": [
+			{
+				"key": "password",
+				"value": "{{apitoken\n}}",
+				"type": "string"
+			},
+			{
+				"key": "username",
+				"value": "{{username}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "projectId",
+			"value": ""
+		},
+		{
+			"key": "issueId",
+			"value": ""
+		},
+		{
+			"key": "issueKey",
+			"value": ""
+		}
+	]
+}
